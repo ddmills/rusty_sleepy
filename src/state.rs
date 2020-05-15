@@ -1,19 +1,11 @@
 use super::*;
 
-#[derive(PartialEq, Copy, Clone)]
-pub enum TileType {
-    Wall,
-    Floor,
-}
-
 pub struct State {
-    pub tiles: Vec<TileType>,
+    pub map: Map,
 }
 
 impl State {
     pub fn new() -> State {
-        State {
-            tiles: vec![TileType::Floor; (WIDTH * HEIGHT) as usize],
-        }
+        State { map: Map::new() }
     }
 }
