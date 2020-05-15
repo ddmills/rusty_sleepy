@@ -5,8 +5,8 @@ pub use state::*;
 mod map;
 pub use map::*;
 
-pub const WIDTH: i32 = 40;
-pub const HEIGHT: i32 = 25;
+pub const WIDTH: i32 = 80;
+pub const HEIGHT: i32 = 50;
 
 impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
@@ -18,16 +18,21 @@ impl GameState for State {
         let mut y = 0;
         let mut x = 0;
 
-        for (i, _tile) in self.map.tiles.iter().enumerate() {
-            let mut fg = HSV::from_f32(0.25, 0.6, 1.0);
+        for (i, tile) in self.map.tiles.iter().enumerate() {
+            let mut bg = HSV::from_f32(0.25, 0.6, 1.0);
 
-            fg.v = (self.map.altitude[i] / 2.0) + 0.3;
+            match tile {
+                TileType::Water => {
+                    bg.h = 0.5;
+                    bg.v = self.map.altitude[i];
+                }
+                TileType::Ground => {
+                    bg.h = 0.25;
+                    bg.v = (self.map.altitude[i] / 2.0) + 0.3;
+                }
+            }
 
-            draw.set(
-                Point::new(x, y),
-                ColorPair::new(fg, HSV::from_f32(0., 0., 0.)),
-                2,
-            );
+            draw.set(Point::new(x, y), ColorPair::new(bg, bg), 2);
 
             x += 1;
             if x > WIDTH - 1 {

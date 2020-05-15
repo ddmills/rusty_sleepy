@@ -1,9 +1,11 @@
 use super::*;
 
+pub const SEA_LEVEL: f32 = 0.4;
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
-    Wall,
-    Floor,
+    Water,
+    Ground,
 }
 
 pub struct Map {
@@ -25,7 +27,7 @@ impl Map {
 
     pub fn new() -> Map {
         let mut map = Map {
-            tiles: vec![TileType::Floor; (WIDTH * HEIGHT) as usize],
+            tiles: vec![TileType::Ground; (WIDTH * HEIGHT) as usize],
             altitude: vec![0.; (WIDTH * HEIGHT) as usize],
             width: WIDTH,
             height: HEIGHT,
@@ -35,10 +37,10 @@ impl Map {
         let mut noise = FastNoise::new();
         noise.set_noise_type(NoiseType::SimplexFractal);
         noise.set_fractal_type(FractalType::FBM);
-        noise.set_fractal_octaves(6);
-        noise.set_fractal_gain(0.7);
-        noise.set_fractal_lacunarity(0.4);
-        noise.set_frequency(0.3);
+        noise.set_fractal_octaves(10);
+        noise.set_fractal_gain(0.4);
+        noise.set_fractal_lacunarity(3.0);
+        noise.set_frequency(0.02);
 
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
@@ -47,6 +49,10 @@ impl Map {
                 let altitude = (n + 1.0) / 2.0;
 
                 map.altitude[idx] = altitude;
+
+                if altitude < SEA_LEVEL {
+                    map.tiles[idx] = TileType::Water;
+                }
             }
         }
 
