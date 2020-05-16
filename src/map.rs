@@ -110,12 +110,12 @@ impl Map {
         let mut noise_precipitation = FastNoise::new();
         noise_precipitation.set_seed(seed);
         noise_precipitation.set_noise_type(NoiseType::SimplexFractal);
-        noise_precipitation.set_fractal_type(FractalType::FBM);
+        noise_precipitation.set_fractal_type(FractalType::Billow);
         // noise_precipitation.set_interp(Interp::Quintic);
-        noise_precipitation.set_fractal_octaves(2);
-        noise_precipitation.set_fractal_gain(0.4);
-        noise_precipitation.set_fractal_lacunarity(2.0);
-        noise_precipitation.set_frequency(0.025);
+        noise_precipitation.set_fractal_octaves(5);
+        noise_precipitation.set_fractal_gain(0.3);
+        noise_precipitation.set_fractal_lacunarity(1.0);
+        noise_precipitation.set_frequency(0.008);
 
         let mut min_elevation = 0.0;
         let mut max_elevation = 0.0;
@@ -162,7 +162,7 @@ impl Map {
                 self.elevation[idx] = elevation.powf(1.2);
                 // self.elevation[idx] = elevation;
                 self.precipitation[idx] = precipitation;
-                self.temperature[idx] = (temperature + (1.0 - elevation.powf(3.0))) / 2.0;
+                self.temperature[idx] = (temperature + (1.0 - elevation.powf(2.0))) / 2.0;
                 // self.temperature[idx] = temperature;
                 self.hsv[idx] = hsv(elevation);
             }

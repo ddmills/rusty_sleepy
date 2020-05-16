@@ -8,7 +8,7 @@ pub struct ColorLUT {
 
 impl ColorLUT {
     pub fn new() -> ColorLUT {
-        let img = image::open("resources/biome-land.png").unwrap();
+        let img = image::open("resources/biome-mix-2.png").unwrap();
 
         ColorLUT {
             img: img,
