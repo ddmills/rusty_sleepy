@@ -1,6 +1,6 @@
 use super::*;
 
-pub const SEA_LEVEL: f32 = 0.55;
+pub const SEA_LEVEL: f32 = 0.5;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Biome {
@@ -96,20 +96,9 @@ impl Map {
         return Biome::Rainforest;
     }
 
-    pub fn new() -> Map {
-        let mut map = Map {
-            tiles: vec![Biome::Water; (WIDTH * HEIGHT) as usize],
-            elevation: vec![0.; (WIDTH * HEIGHT) as usize],
-            precipitation: vec![0.; (WIDTH * HEIGHT) as usize],
-            temperature: vec![0.; (WIDTH * HEIGHT) as usize],
-            biome: vec![Biome::Water; (WIDTH * HEIGHT) as usize],
-            hsv: vec![HSV::from_f32(0.0, 1.0, 1.0); (WIDTH * HEIGHT) as usize],
-            width: WIDTH,
-            height: HEIGHT,
-            size: (WIDTH * HEIGHT) as usize,
-        };
-
+    pub fn generate(&mut self, seed: u64) {
         let mut noise_elevation = FastNoise::new();
+        noise_elevation.set_seed(seed);
         noise_elevation.set_noise_type(NoiseType::SimplexFractal);
         noise_elevation.set_fractal_type(FractalType::FBM);
         // noise_elevation.set_interp(Interp::Quintic);
@@ -119,6 +108,7 @@ impl Map {
         noise_elevation.set_frequency(0.03);
 
         let mut noise_precipitation = FastNoise::new();
+        noise_precipitation.set_seed(seed);
         noise_precipitation.set_noise_type(NoiseType::SimplexFractal);
         noise_precipitation.set_fractal_type(FractalType::FBM);
         // noise_precipitation.set_interp(Interp::Quintic);
@@ -152,8 +142,8 @@ impl Map {
                     max_precipitation = m;
                 }
 
-                nz_elevation[map.idx(x, y)] = e;
-                nz_precipitation[map.idx(x, y)] = m;
+                nz_elevation[self.idx(x, y)] = e;
+                nz_precipitation[self.idx(x, y)] = m;
             }
         }
 
@@ -162,20 +152,34 @@ impl Map {
 
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
-                let idx = map.idx(x, y);
+                let idx = self.idx(x, y);
                 let nz_e = nz_elevation[idx];
                 let nz_m = nz_precipitation[idx];
                 let elevation = (nz_e - min_elevation) / range_elevation;
                 let precipitation = (nz_m - min_precipitation) / range_precipitation;
                 let temperature = temp((y as f32) / (HEIGHT as f32));
 
-                map.elevation[idx] = elevation.powf(3.0);
-                map.precipitation[idx] = precipitation;
-                map.temperature[idx] = (temperature + (1.0 - elevation.powf(2.0))) / 2.0;
-                map.hsv[idx] = hsv(elevation);
+                self.elevation[idx] = elevation.powf(1.2);
+                // self.elevation[idx] = elevation;
+                self.precipitation[idx] = precipitation;
+                self.temperature[idx] = (temperature + (1.0 - elevation.powf(3.0))) / 2.0;
+                // self.temperature[idx] = temperature;
+                self.hsv[idx] = hsv(elevation);
             }
         }
+    }
 
-        map
+    pub fn new() -> Map {
+        Map {
+            tiles: vec![Biome::Water; (WIDTH * HEIGHT) as usize],
+            elevation: vec![0.; (WIDTH * HEIGHT) as usize],
+            precipitation: vec![0.; (WIDTH * HEIGHT) as usize],
+            temperature: vec![0.; (WIDTH * HEIGHT) as usize],
+            biome: vec![Biome::Water; (WIDTH * HEIGHT) as usize],
+            hsv: vec![HSV::from_f32(0.0, 1.0, 1.0); (WIDTH * HEIGHT) as usize],
+            width: WIDTH,
+            height: HEIGHT,
+            size: (WIDTH * HEIGHT) as usize,
+        }
     }
 }

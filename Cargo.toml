@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 bracket-lib = "0.8.1"
 specs = "0.16.1"
+image = "0.23.4"
