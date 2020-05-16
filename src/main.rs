@@ -69,7 +69,7 @@ impl GameState for State {
             for (_i, _tile) in self.world.tiles.iter().enumerate() {
                 let elevation = self.world.elevation(x, y);
                 let precipitation = self.world.precipitation(x, y);
-                let temperature = self.world.temperature(y);
+                let temperature = self.world.temperature(x, y);
 
                 let bg = match self.world_view_mode {
                     WorldViewMode::Biome => {
@@ -129,16 +129,16 @@ impl GameState for State {
             ColorPair::new(WHITE, BLACK),
         );
         draw.print(
-            Point::new(1, 1),
-            "(B) Biome (F) Flat (P) Precipitation (E) Elevation (T) Temperature",
+            Point::new(1, HEIGHT - 2),
+            "(B) Biome (F) Flat (P) Precipitation (E) Elevation (T) Temperature (R) Re-roll",
         );
-        draw.print(Point::new(1, 2), "(R) Re-roll");
 
         let (lat, lon) = self.world.tile_to_lat_lon(mouse_pos.0, mouse_pos.1);
+        draw.print(Point::new(1, 3), &format!("seed {}", self.seed));
         draw.print(Point::new(1, 4), &format!("x, y ({}, {})", mouse_pos.0, mouse_pos.1));
         draw.print(Point::new(1, 5), &format!("lat, lon ({}, {})", lat, lon));
 
-        draw.print(Point::new(1, 7), &format!("(T) Temper {}", self.world.temperature(mouse_pos.1)));
+        draw.print(Point::new(1, 7), &format!("(T) Temper {}", self.world.temperature(mouse_pos.0, mouse_pos.1)));
         draw.print(Point::new(1, 8), &format!("(E) Elevat {}", self.world.elevation(mouse_pos.0, mouse_pos.1)));
         draw.print(Point::new(1, 9), &format!("(P) Precip {}", self.world.precipitation(mouse_pos.0, mouse_pos.1)));
 

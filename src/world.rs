@@ -1,6 +1,6 @@
 use super::*;
 
-pub const SEA_LEVEL: f32 = 0.5;
+pub const SEA_LEVEL: f32 = 0.55;
 
 pub struct World {
     pub tiles: Vec<f32>,
@@ -61,15 +61,17 @@ impl World {
     pub fn precipitation(&self, x: i32, y: i32) -> f32 {
         let coord = self.tile_to_sphere(x, y);
         let v = self.nz_precipitation.get_noise3d(coord.0, coord.1, coord.2);
-        normalize_noize(v)
+        (1.0 - normalize_noize(v)).powf(1.5)
     }
 
-    pub fn temperature(&self, y: i32) -> f32 {
-        temp((y as f32) / (HEIGHT as f32))
+    pub fn temperature(&self, x: i32, y: i32) -> f32 {
+        let sun = temp((y as f32) / ((HEIGHT - 1) as f32));
+        let ele = self.elevation(x, y);
+
+        sun * (1.0 - ele.powf(3.0))
     }
 
     pub fn generate(&mut self, seed: u32) {
-        println!("set seed {}", seed);
         self.nz_elevation.set_seed(seed as u64);
         self.nz_elevation.set_noise_type(NoiseType::SimplexFractal);
         self.nz_elevation.set_fractal_type(FractalType::FBM);
@@ -79,14 +81,14 @@ impl World {
         self.nz_elevation.set_fractal_lacunarity(2.5);
         self.nz_elevation.set_frequency(0.6);
 
-        let mut nz_precipitation = FastNoise::new();
-        nz_precipitation.set_seed(seed as u64);
-        nz_precipitation.set_noise_type(NoiseType::SimplexFractal);
-        nz_precipitation.set_fractal_type(FractalType::Billow);
-        nz_precipitation.set_fractal_octaves(5);
-        nz_precipitation.set_fractal_gain(0.3);
-        nz_precipitation.set_fractal_lacunarity(1.0);
-        nz_precipitation.set_frequency(2.0);
+        self.nz_precipitation.set_seed(seed as u64);
+        self.nz_precipitation.set_noise_type(NoiseType::SimplexFractal);
+        self.nz_precipitation.set_fractal_type(FractalType::FBM);
+        // self.nz_precipitation.set_interp(Interp::Quintic);
+        self.nz_precipitation.set_fractal_octaves(3);
+        self.nz_precipitation.set_fractal_gain(0.5);
+        self.nz_precipitation.set_fractal_lacunarity(0.5);
+        self.nz_precipitation.set_frequency(0.7);
     }
 
     pub fn new() -> World {
