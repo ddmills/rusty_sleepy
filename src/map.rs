@@ -1,19 +1,47 @@
 use super::*;
 
-pub const SEA_LEVEL: f32 = 0.4;
+pub const SEA_LEVEL: f32 = 0.55;
 
 #[derive(PartialEq, Copy, Clone)]
-pub enum TileType {
+pub enum Biome {
     Water,
-    Ground,
+    IceSheet,
+    ColdDesert,
+    Tundra,
+    BorealForest,
+    Grassland,
+    Woodland,
+    TemperateForest,
+    Rainforest,
+    Desert,
+    Savanna,
 }
 
 pub struct Map {
-    pub tiles: Vec<TileType>,
-    pub altitude: Vec<f32>,
+    pub tiles: Vec<Biome>,
+    pub elevation: Vec<f32>,
+    pub precipitation: Vec<f32>,
+    pub temperature: Vec<f32>,
+    pub biome: Vec<Biome>,
+    pub hsv: Vec<HSV>,
     pub width: i32,
     pub height: i32,
     pub size: usize,
+}
+
+fn hsv(e: f32) -> HSV {
+    let v =  e / 1.5 + 0.25;
+    if e < 0.6 { return HSV::from_f32(0.601, 0.5, v); }
+    if e < 0.65 { return HSV::from_f32(0.136, 0.5, 0.8); }
+    if e < 0.8 { return HSV::from_f32(0.333, 0.5, v); }
+    if e < 0.85 { return HSV::from_f32(0.393, 0.5, v); }
+    if e < 0.9 { return HSV::from_f32(0.206, 0.5, v); }
+    if e < 0.95 { return HSV::from_f32(0.065, 0.5, v); }
+    HSV::from_f32(0.0, 0.0, v)
+}
+
+fn temp(v: f32) -> f32 {
+    (v * std::f32::consts::PI).sin()
 }
 
 impl Map {
@@ -25,34 +53,126 @@ impl Map {
         (idx as i32 % self.width, idx as i32 / self.width)
     }
 
+    pub fn biome(e: f32, m: f32, t: f32) -> Biome {
+        if e < 0.4 {
+            if t < 0.5 {
+                return Biome::Water;
+            }
+            return Biome::IceSheet;
+        }
+
+        if t < 0.15 {
+            return Biome::ColdDesert;
+        }
+
+        if t < 0.25 {
+            return Biome::Tundra;
+        }
+
+        if t < 0.75 {
+            if t < 0.5 {
+                if m < 0.5 {
+                    return Biome::BorealForest;
+                }
+            }
+            if m < 0.1 {
+                return Biome::Grassland;
+            }
+            if m < 0.25 {
+                return Biome::Woodland;
+            }
+
+            return Biome::TemperateForest;
+        }
+
+        if m < 0.25 {
+            return Biome::Desert;
+        }
+
+        if m < 0.75 {
+            return Biome::Savanna;
+        }
+
+        return Biome::Rainforest;
+    }
+
     pub fn new() -> Map {
         let mut map = Map {
-            tiles: vec![TileType::Ground; (WIDTH * HEIGHT) as usize],
-            altitude: vec![0.; (WIDTH * HEIGHT) as usize],
+            tiles: vec![Biome::Water; (WIDTH * HEIGHT) as usize],
+            elevation: vec![0.; (WIDTH * HEIGHT) as usize],
+            precipitation: vec![0.; (WIDTH * HEIGHT) as usize],
+            temperature: vec![0.; (WIDTH * HEIGHT) as usize],
+            biome: vec![Biome::Water; (WIDTH * HEIGHT) as usize],
+            hsv: vec![HSV::from_f32(0.0, 1.0, 1.0); (WIDTH * HEIGHT) as usize],
             width: WIDTH,
             height: HEIGHT,
             size: (WIDTH * HEIGHT) as usize,
         };
 
-        let mut noise = FastNoise::new();
-        noise.set_noise_type(NoiseType::SimplexFractal);
-        noise.set_fractal_type(FractalType::FBM);
-        noise.set_fractal_octaves(10);
-        noise.set_fractal_gain(0.4);
-        noise.set_fractal_lacunarity(3.0);
-        noise.set_frequency(0.02);
+        let mut noise_elevation = FastNoise::new();
+        noise_elevation.set_noise_type(NoiseType::SimplexFractal);
+        noise_elevation.set_fractal_type(FractalType::FBM);
+        // noise_elevation.set_interp(Interp::Quintic);
+        noise_elevation.set_fractal_octaves(4);
+        noise_elevation.set_fractal_gain(0.4);
+        noise_elevation.set_fractal_lacunarity(2.5);
+        noise_elevation.set_frequency(0.03);
+
+        let mut noise_precipitation = FastNoise::new();
+        noise_precipitation.set_noise_type(NoiseType::SimplexFractal);
+        noise_precipitation.set_fractal_type(FractalType::FBM);
+        // noise_precipitation.set_interp(Interp::Quintic);
+        noise_precipitation.set_fractal_octaves(2);
+        noise_precipitation.set_fractal_gain(0.4);
+        noise_precipitation.set_fractal_lacunarity(2.0);
+        noise_precipitation.set_frequency(0.025);
+
+        let mut min_elevation = 0.0;
+        let mut max_elevation = 0.0;
+        let mut min_precipitation = 0.0;
+        let mut max_precipitation = 0.0;
+        let mut nz_elevation = vec![0.; (WIDTH * HEIGHT) as usize];
+        let mut nz_precipitation = vec![0.; (WIDTH * HEIGHT) as usize];
+
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let e = noise_elevation.get_noise(x as f32, y as f32);
+                let m = noise_precipitation.get_noise(x as f32, y as f32);
+
+                if e < min_elevation {
+                    min_elevation = e;
+                }
+                if e > max_elevation {
+                    max_elevation = e;
+                }
+                if m < min_precipitation {
+                    min_precipitation = m;
+                }
+                if m > max_precipitation {
+                    max_precipitation = m;
+                }
+
+                nz_elevation[map.idx(x, y)] = e;
+                nz_precipitation[map.idx(x, y)] = m;
+            }
+        }
+
+        let range_elevation = max_elevation - min_elevation;
+        let range_precipitation = max_precipitation - min_precipitation;
 
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
                 let idx = map.idx(x, y);
-                let n = noise.get_noise(x as f32, y as f32);
-                let altitude = (n + 1.0) / 2.0;
+                let nz_e = nz_elevation[idx];
+                let nz_m = nz_precipitation[idx];
+                let elevation = (nz_e - min_elevation) / range_elevation;
+                let precipitation = (nz_m - min_precipitation) / range_precipitation;
+                let temperature = temp((y as f32) / (HEIGHT as f32));
 
-                map.altitude[idx] = altitude;
-
-                if altitude < SEA_LEVEL {
-                    map.tiles[idx] = TileType::Water;
-                }
+                map.elevation[idx] = elevation.powf(3.0);
+                map.precipitation[idx] = precipitation;
+                map.temperature[idx] = (temperature + (1.0 - elevation.powf(2.0))) / 2.0;
+                map.hsv[idx] = hsv(elevation);
             }
         }
 
