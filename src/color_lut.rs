@@ -1,5 +1,5 @@
-use image::*;
 use super::*;
+use image::*;
 
 pub struct ColorLUT {
     img: DynamicImage,
@@ -12,14 +12,14 @@ impl ColorLUT {
 
         ColorLUT {
             img: img,
-            table: vec!(HSV::from_f32(0.0, 0.0, 0.0))
+            table: vec![HSV::from_f32(0.0, 0.0, 0.0)],
         }
     }
 
     pub fn get_hsv(&self, x: f32, y: f32) -> HSV {
         let (im_w, im_h) = self.img.dimensions();
         let px = (x * ((im_w - 1) as f32)) as u32;
-        let py = (y * ((im_h - 1) as f32)) as u32;
+        let py = ((1.0 - y) * ((im_h - 1) as f32)) as u32;
 
         if !self.img.in_bounds(px, py) {
             println!("pixel out of bounds ({},{})", x, y);

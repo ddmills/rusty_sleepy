@@ -1,19 +1,21 @@
 use super::*;
 
 pub struct State {
-    pub map: Map,
-    pub map_view_mode: MapViewMode,
+    pub world: World,
+    pub world_view_mode: WorldViewMode,
     pub biome_lut: ColorLUT,
-    pub seed: u64,
+    pub seed: u32,
+    pub is_dirty: bool,
 }
 
 impl State {
     pub fn new() -> State {
         State {
-            map: Map::new(),
-            map_view_mode: MapViewMode::Biome,
+            world: World::new(),
+            world_view_mode: WorldViewMode::Biome,
             biome_lut: ColorLUT::new(),
             seed: 1,
+            is_dirty: true,
         }
     }
 }
