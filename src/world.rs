@@ -40,6 +40,22 @@ impl World {
         (chunk_x, chunk_y)
     }
 
+    pub fn chunks_in_viewport(&self, viewport: &Viewport) -> Vec<u32> {
+        let (tl_coord_x, tl_coord_y) = self.chunk_coord(viewport.x, viewport.y);
+        let (br_coord_x, br_coord_y) = self.chunk_coord(viewport.right(), viewport.bottom());
+        let mut chunks = Vec::new();
+
+        for y in tl_coord_y..(br_coord_y + 1) {
+            for x in tl_coord_x..(br_coord_x + 1) {
+                let chunk_idx = (y * (self.width / self.chunk_size)) + x;
+
+                chunks.push(chunk_idx);
+            }
+        }
+
+        chunks
+    }
+
     pub fn tile(&self, idx: u32) -> (u32, u32) {
         (idx % self.width, idx / self.width)
     }
@@ -114,7 +130,7 @@ impl World {
             size: (WIDTH * HEIGHT) as usize,
             nz_elevation: FastNoise::new(),
             nz_precipitation: FastNoise::new(),
-            chunk_size: 8,
+            chunk_size: 4,
             seed: 0,
         };
 

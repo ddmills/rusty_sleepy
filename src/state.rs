@@ -5,6 +5,7 @@ pub struct State {
     pub world_view_mode: WorldViewMode,
     pub biome_lut: ColorLUT,
     pub is_dirty: bool,
+    pub viewport: Viewport,
 }
 
 impl State {
@@ -14,6 +15,7 @@ impl State {
             world_view_mode: WorldViewMode::Biome,
             biome_lut: ColorLUT::new(),
             is_dirty: true,
+            viewport: Viewport::new(),
         }
     }
 }

@@ -6,6 +6,8 @@ mod world;
 pub use world::*;
 mod color_lut;
 pub use color_lut::*;
+mod viewport;
+pub use viewport::*;
 
 pub const WIDTH: u32 = 80;
 pub const HEIGHT: u32 = 50;
@@ -206,6 +208,10 @@ fn main() -> BError {
         .build()?;
 
     let gs = State::new();
+
+    for chunk in gs.world.chunks_in_viewport(&gs.viewport).iter() {
+        println!("chunk vis {}", chunk);
+    }
 
     main_loop(ctx, gs)
 }
