@@ -7,8 +7,8 @@ pub use world::*;
 mod color_lut;
 pub use color_lut::*;
 
-pub const WIDTH: i32 = 80;
-pub const HEIGHT: i32 = 50;
+pub const WIDTH: u32 = 80;
+pub const HEIGHT: u32 = 50;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum WorldViewMode {
@@ -44,9 +44,9 @@ fn handle_input(state: &mut State, ctx: &mut BTerm) {
                 WorldViewMode::Flat
             }
             VirtualKeyCode::R => {
-                state.seed += 1;
                 state.is_dirty = true;
-                state.world.generate(state.seed);
+                state.world.set_seed(state.world.seed + 1);
+                state.world.generate();
                 state.world_view_mode
             }
             _ => state.world_view_mode,
@@ -66,10 +66,10 @@ impl GameState for State {
             let mut y = 0;
             let mut x = 0;
 
-            for (_i, _tile) in self.world.tiles.iter().enumerate() {
-                let elevation = self.world.elevation(x, y);
-                let precipitation = self.world.precipitation(x, y);
-                let temperature = self.world.temperature(x, y);
+            for (i, _tile) in self.world.tiles.iter().enumerate() {
+                let elevation = self.world.elevation[i];
+                let precipitation = self.world.precipitation[i];
+                let temperature = self.world.temperature[i];
 
                 let bg = match self.world_view_mode {
                     WorldViewMode::Biome => {
@@ -97,9 +97,7 @@ impl GameState for State {
                     }
                     WorldViewMode::Elevation => HSV::from_f32(0.0, 0.5, elevation),
                     WorldViewMode::Precipitation => HSV::from_f32(0.601, 0.5, precipitation),
-                    WorldViewMode::Temperature => {
-                        HSV::from_f32(0.111, temperature, temperature)
-                    }
+                    WorldViewMode::Temperature => HSV::from_f32(0.111, temperature, temperature),
                 };
 
                 draw.set(Point::new(x, y), ColorPair::new(bg, bg), 2);
@@ -118,7 +116,16 @@ impl GameState for State {
         draw.cls();
         let mouse_pos = ctx.mouse_pos();
 
-        draw.set(Point::new(mouse_pos.0, mouse_pos.1), ColorPair::new(MAGENTA, MAGENTA), 2);
+        draw.set(
+            Point::new(mouse_pos.0, mouse_pos.1),
+            ColorPair::new(YELLOW, YELLOW),
+            2,
+        );
+
+        // draw.draw_hollow_box(
+        //     Rect::with_size(mouse_pos.0 - 2, mouse_pos.1 - 2, 4, 4),
+        //     ColorPair::new(MAGENTA, MAGENTA),
+        // );
 
         draw.target(1);
         draw.cls();
@@ -133,14 +140,26 @@ impl GameState for State {
             "(B) Biome (F) Flat (P) Precipitation (E) Elevation (T) Temperature (R) Re-roll",
         );
 
-        let (lat, lon) = self.world.tile_to_lat_lon(mouse_pos.0, mouse_pos.1);
-        draw.print(Point::new(1, 3), &format!("seed {}", self.seed));
-        draw.print(Point::new(1, 4), &format!("x, y ({}, {})", mouse_pos.0, mouse_pos.1));
-        draw.print(Point::new(1, 5), &format!("lat, lon ({}, {})", lat, lon));
+        let mouse_x = mouse_pos.0;
+        let mouse_y = mouse_pos.1;
 
-        draw.print(Point::new(1, 7), &format!("(T) Temper {}", self.world.temperature(mouse_pos.0, mouse_pos.1)));
-        draw.print(Point::new(1, 8), &format!("(E) Elevat {}", self.world.elevation(mouse_pos.0, mouse_pos.1)));
-        draw.print(Point::new(1, 9), &format!("(P) Precip {}", self.world.precipitation(mouse_pos.0, mouse_pos.1)));
+        let mouse_idx = self.world.idx(mouse_x, mouse_y);
+
+        draw.print(Point::new(1, 3), &format!("seed {}", self.world.seed));
+
+        draw.print(Point::new(1, 4), &format!("({}, {})", mouse_x, mouse_y));
+        draw.print(
+            Point::new(1, 5),
+            &format!("(T) Temper {}", self.world.temperature[mouse_idx]),
+        );
+        draw.print(
+            Point::new(1, 6),
+            &format!("(E) Elevat {}", self.world.elevation[mouse_idx]),
+        );
+        draw.print(
+            Point::new(1, 7),
+            &format!("(P) Precip {}", self.world.precipitation[mouse_idx]),
+        );
 
         draw.submit(0).expect("Batch error");
         render_draw_buffer(ctx).expect("Render error");
@@ -158,12 +177,10 @@ fn main() -> BError {
         .with_font("terrain4x4.png", 4u32, 4u32)
         .with_simple_console(WIDTH as u32, HEIGHT as u32, "tiles.png")
         .with_sparse_console_no_bg((WIDTH * 2) as u32, HEIGHT as u32, "bizcat.png")
-        .with_sparse_console_no_bg(WIDTH as u32, HEIGHT as u32, "terrain4x4.png")
+        .with_sparse_console_no_bg(WIDTH as u32, HEIGHT as u32, "tiles.png")
         .build()?;
 
-    let mut gs = State::new();
-
-    gs.world.generate(gs.seed);
+    let gs = State::new();
 
     main_loop(ctx, gs)
 }
