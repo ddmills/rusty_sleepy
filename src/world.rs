@@ -11,6 +11,7 @@ pub struct World {
     pub height: u32,
     pub size: usize,
     pub seed: u32,
+    pub chunk_size: u32,
     nz_elevation: FastNoise,
     nz_precipitation: FastNoise,
 }
@@ -20,12 +21,27 @@ fn normalize_noize(v: f32) -> f32 {
 }
 
 impl World {
-    pub fn idx(&self, x: i32, y: i32) -> usize {
-        (y as usize * self.width as usize) + x as usize
+    pub fn idx(&self, x: u32, y: u32) -> u32 {
+        (y * self.width) + x
     }
 
-    pub fn tile(&self, idx: usize) -> (u32, u32) {
-        (idx as u32 % self.width, idx as u32 / self.width)
+    pub fn chunk_idx(&self, x: f32, y: f32) -> u32 {
+        let chunk_x = x as u32 / self.chunk_size;
+        let chunk_y = y as u32 / self.chunk_size;
+        let chunk_w = self.width / self.chunk_size;
+
+        (chunk_y * chunk_w) + chunk_x
+    }
+
+    pub fn chunk_coord(&self, x: f32, y: f32) -> (u32, u32) {
+        let chunk_x = x as u32 / self.chunk_size;
+        let chunk_y = y as u32 / self.chunk_size;
+
+        (chunk_x, chunk_y)
+    }
+
+    pub fn tile(&self, idx: u32) -> (u32, u32) {
+        (idx % self.width, idx / self.width)
     }
 
     pub fn compute_elevation(&self, x: f32, y: f32) -> f32 {
@@ -98,6 +114,7 @@ impl World {
             size: (WIDTH * HEIGHT) as usize,
             nz_elevation: FastNoise::new(),
             nz_precipitation: FastNoise::new(),
+            chunk_size: 8,
             seed: 0,
         };
 

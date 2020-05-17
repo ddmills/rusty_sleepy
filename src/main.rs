@@ -54,62 +54,74 @@ fn handle_input(state: &mut State, ctx: &mut BTerm) {
     };
 }
 
+impl State {
+    fn render_map(&self, ctx: &mut BTerm) {
+        let mut draw = DrawBatch::new();
+
+        draw.target(0);
+        draw.cls();
+
+        let mut y = 0;
+        let mut x = 0;
+
+        for (i, _tile) in self.world.tiles.iter().enumerate() {
+            let elevation = self.world.elevation[i];
+            let precipitation = self.world.precipitation[i];
+            let temperature = self.world.temperature[i];
+
+            let bg = match self.world_view_mode {
+                WorldViewMode::Biome => {
+                    let mut c = HSV::from_f32(0.55, 0.5, 0.5);
+
+                    if elevation > SEA_LEVEL {
+                        let t = temperature;
+                        let p = precipitation;
+                        c = self.biome_lut.get_hsv(t, p);
+                    }
+                    c.v = (c.v + elevation) / 2.0;
+
+                    c
+                }
+                WorldViewMode::Flat => {
+                    let mut c = HSV::from_f32(0.55, 0.5, 0.5);
+
+                    if elevation > SEA_LEVEL {
+                        let t = temperature;
+                        let p = precipitation;
+                        c = self.biome_lut.get_hsv(t, p);
+                    }
+
+                    c
+                }
+                WorldViewMode::Elevation => HSV::from_f32(0.0, 0.5, elevation),
+                WorldViewMode::Precipitation => HSV::from_f32(0.601, 0.5, precipitation),
+                WorldViewMode::Temperature => HSV::from_f32(0.111, temperature, temperature),
+            };
+
+            draw.set(Point::new(x, y), ColorPair::new(bg, bg), 2);
+
+            x += 1;
+            if x > WIDTH - 1 {
+                x = 0;
+                y += 1;
+            }
+        }
+
+        draw.submit(0).expect("Batch error");
+        render_draw_buffer(ctx).expect("Render error");
+    }
+}
+
 impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         handle_input(self, ctx);
-        let mut draw = DrawBatch::new();
 
         if self.is_dirty {
-            draw.target(0);
-            draw.cls();
-
-            let mut y = 0;
-            let mut x = 0;
-
-            for (i, _tile) in self.world.tiles.iter().enumerate() {
-                let elevation = self.world.elevation[i];
-                let precipitation = self.world.precipitation[i];
-                let temperature = self.world.temperature[i];
-
-                let bg = match self.world_view_mode {
-                    WorldViewMode::Biome => {
-                        let mut c = HSV::from_f32(0.55, 0.5, 0.5);
-
-                        if elevation > SEA_LEVEL {
-                            let t = temperature;
-                            let p = precipitation;
-                            c = self.biome_lut.get_hsv(t, p);
-                        }
-                        c.v = (c.v + elevation) / 2.0;
-
-                        c
-                    }
-                    WorldViewMode::Flat => {
-                        let mut c = HSV::from_f32(0.55, 0.5, 0.5);
-
-                        if elevation > SEA_LEVEL {
-                            let t = temperature;
-                            let p = precipitation;
-                            c = self.biome_lut.get_hsv(t, p);
-                        }
-
-                        c
-                    }
-                    WorldViewMode::Elevation => HSV::from_f32(0.0, 0.5, elevation),
-                    WorldViewMode::Precipitation => HSV::from_f32(0.601, 0.5, precipitation),
-                    WorldViewMode::Temperature => HSV::from_f32(0.111, temperature, temperature),
-                };
-
-                draw.set(Point::new(x, y), ColorPair::new(bg, bg), 2);
-
-                x += 1;
-                if x > WIDTH - 1 {
-                    x = 0;
-                    y += 1;
-                }
-            }
+            self.render_map(ctx);
             self.is_dirty = false;
         }
+
+        let mut draw = DrawBatch::new();
 
         ctx.set_active_console(2);
         draw.target(2);
@@ -140,25 +152,38 @@ impl GameState for State {
             "(B) Biome (F) Flat (P) Precipitation (E) Elevation (T) Temperature (R) Re-roll",
         );
 
-        let mouse_x = mouse_pos.0;
-        let mouse_y = mouse_pos.1;
+        let mouse_x = mouse_pos.0 as u32;
+        let mouse_y = mouse_pos.1 as u32;
 
         let mouse_idx = self.world.idx(mouse_x, mouse_y);
+        let chunk_idx = self.world.chunk_idx(mouse_x as f32, mouse_y as f32);
+        let chunk_coord = self.world.chunk_coord(mouse_x as f32, mouse_y as f32);
 
-        draw.print(Point::new(1, 3), &format!("seed {}", self.world.seed));
+        draw.print(Point::new(1, 1), &format!("seed {}", self.world.seed));
 
-        draw.print(Point::new(1, 4), &format!("({}, {})", mouse_x, mouse_y));
         draw.print(
-            Point::new(1, 5),
-            &format!("(T) Temper {}", self.world.temperature[mouse_idx]),
+            Point::new(1, 2),
+            &format!("world {} ({}, {})", mouse_idx, mouse_x, mouse_y),
         );
         draw.print(
-            Point::new(1, 6),
-            &format!("(E) Elevat {}", self.world.elevation[mouse_idx]),
+            Point::new(1, 3),
+            &format!("chunk {} ({}, {})", chunk_idx, chunk_coord.0, chunk_coord.1),
+        );
+
+        draw.print(
+            Point::new(1, 8),
+            &format!("(T) Temper {}", self.world.temperature[mouse_idx as usize]),
         );
         draw.print(
-            Point::new(1, 7),
-            &format!("(P) Precip {}", self.world.precipitation[mouse_idx]),
+            Point::new(1, 9),
+            &format!("(E) Elevat {}", self.world.elevation[mouse_idx as usize]),
+        );
+        draw.print(
+            Point::new(1, 10),
+            &format!(
+                "(P) Precip {}",
+                self.world.precipitation[mouse_idx as usize]
+            ),
         );
 
         draw.submit(0).expect("Batch error");
